@@ -40,6 +40,84 @@ int ServerMessage::from_bin(char * bobj)
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 
+void GameMessage::to_bin()
+{
+    alloc_data(MESSAGE_SIZE);
+
+    memset(_data, 0, MESSAGE_SIZE);
+
+    //Serializar los campos type, nick y message en el buffer _data
+
+    char * tmp = _data;
+
+    memcpy(tmp, data.c_str(), 80 * sizeof(char));
+}
+
+int GameMessage::from_bin(char * bobj)
+{
+    alloc_data(MESSAGE_SIZE);
+
+    memcpy(static_cast<void *>(_data), bobj, MESSAGE_SIZE);
+
+    //Reconstruir la clase usando el buffer _data
+
+    char * tmp = bobj;
+
+    data = tmp;
+
+    return 0;
+}
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+void StartMessage::to_bin()
+{
+    alloc_data(MESSAGE_SIZE);
+
+    memset(_data, 0, MESSAGE_SIZE);
+
+    //Serializar los campos type, nick y message en el buffer _data
+
+    char * tmp = _data;
+
+    memcpy(tmp, &sa, sizeof(struct sockaddr));
+
+    tmp += sizeof(struct sockaddr);
+
+    memcpy(tmp, &sa_len, sizeof(socklen_t));
+
+    tmp += sizeof(socklen_t);
+
+    memcpy(tmp, &turn, sizeof(bool));
+}
+
+int StartMessage::from_bin(char * bobj)
+{
+    alloc_data(MESSAGE_SIZE);
+
+    memcpy(static_cast<void *>(_data), bobj, MESSAGE_SIZE);
+
+    //Reconstruir la clase usando el buffer _data
+
+    char * tmp = bobj;
+
+    memcpy(&sa, tmp, sizeof(struct sockaddr));
+
+    tmp += sizeof(struct sockaddr);
+
+    memcpy(&sa_len, tmp, sizeof(socklen_t));
+
+    tmp += sizeof(socklen_t);
+
+    memcpy(&turn, tmp, sizeof(bool));
+
+    return 0;
+}
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
 void P2PServer::do_messages()
 {
     while (true)
@@ -66,8 +144,18 @@ void P2PServer::do_messages()
             {
                 //Manda a cada uno un mensaje con el puerto del otro y su turno
                 //Begin message p1, p2 = ...
-                socket.send(obj, *sock);
-                socket.send(obj, **it3);
+                StartMessage s1;
+                StartMessage s2;
+                s1.sa = sock->getSockaddr();
+                s1.sa_len = sock->getSockLen();
+                int r = rand() % 2;
+                s1.turn = r;
+                Socket * s = &**it3;
+                s2.sa = s->getSockaddr();
+                s2.sa_len = s->getSockLen();
+                s2.turn = 1-r;
+                socket.send(s2, *sock);
+                socket.send(s1, **it3);
 
 
                 found = true;
@@ -96,19 +184,33 @@ void NimClient::run()
 
     serverSocket.send(em, serverSocket);   
 
-    //BeginMessage bgn;
-    //serverSocket.recv(bgn);
-    //myTurn = bgn.turn;
-    //socket = bgn.socket;
+
+    StartMessage bgn;
+    serverSocket.recv(bgn);
+    myTurn = bgn.turn;
+    socket = Socket(&bgn.sa, bgn.sa_len);
 }
 
 bool NimClient::isGameOver()
 {
     for (int i = 0; i < game.size(); i++)
     {
-        if (game[i] != GONE) return true;
+        if (game[i] != GONE) return false;
     }
-    return false;
+    return true;
+}
+
+void NimClient::render()
+{
+    system("CLS");
+    std::string output;
+    for (int i = 0; i < game.size(); i++)
+    {
+        if (game[i] == GONE) output.push_back('X');
+        else if (game[i] == NORMAL) output.push_back('|');
+        else if (game[i] == SELECTED) output.push_back('I');
+    }
+    std::cout << output << std::endl;
 }
 
 bool NimClient::procesaInput(std::string s)
@@ -158,16 +260,17 @@ void NimClient::input_thread()
 {
     while (true)
     {
-        if(myTurn )
+        if(myTurn)
         {
-	        std::string msg;
+            render();
+            std::string msg;
 	        std::getline(std::cin, msg);
 
             if (procesaInput(msg))
             {
-                //PeerMsg pmsg;
-                //pmsg.msg = msg;
-                //socket.send(msg, socket);
+                GameMessage gmsg;
+                gmsg.data = msg;
+                socket.send(gmsg, socket);
             }
         }
         if (isGameOver()) break;
@@ -181,11 +284,11 @@ void NimClient::net_thread()
         if (!myTurn && !isGameOver())
         {
             //Recibir Mensajes de red
-            ServerMessage obj;
-            Socket * sock = 0;
-            socket.recv(obj, sock);
+            GameMessage obj;
+            render();
+            socket.recv(obj);
 
-            //procesaInput(obj.msg);
+            procesaInput(obj.data);
         }	
         if (isGameOver()) break;
     }

@@ -59,7 +59,7 @@ int Socket::send(Serializable& obj, const Socket& sock)
 
     if (bytes <= 0)
     {
-	return -1;
+	    return -1;
     }
 
     return 0;

@@ -22,34 +22,34 @@ public:
     void to_bin()
     {
         int32_t data_size = 80 * sizeof(char) + 2 * sizeof(int16_t);
-	alloc_data(data_size);
-	
-	char * tmp = _data;
+        alloc_data(data_size);
+        
+        char * tmp = _data;
 
-	memcpy(tmp, name, 80 * sizeof(char));
+        memcpy(tmp, name, 80 * sizeof(char));
 
-	tmp += 80 * sizeof(char);
+        tmp += 80 * sizeof(char);
 
-	memcpy(tmp, &x, sizeof(int16_t));
+        memcpy(tmp, &x, sizeof(int16_t));
 
-	tmp += sizeof(int16_t);
+        tmp += sizeof(int16_t);
 
-	memcpy(tmp, &y, sizeof(int16_t));
+        memcpy(tmp, &y, sizeof(int16_t));
     }
 
     int from_bin(char * data)
     {
         char * tmp = data;
 	
-	memcpy(name, tmp, 80 * sizeof(char));
+        memcpy(name, tmp, 80 * sizeof(char));
 
-	tmp += 80 * sizeof(char);
+        tmp += 80 * sizeof(char);
 
-	memcpy(&x, tmp, sizeof(int16_t));
+        memcpy(&x, tmp, sizeof(int16_t));
 
-	tmp += sizeof(int16_t);
+        tmp += sizeof(int16_t);
 
-	memcpy(&y, tmp, sizeof(int16_t));
+        memcpy(&y, tmp, sizeof(int16_t));
         return 0;
     }
 

@@ -112,6 +112,10 @@ public:
 
     friend bool operator== (const Socket &s1, const Socket &s2);
 
+    struct sockaddr getSockaddr(){return sa;}
+
+    socklen_t getSockLen(){return sa_len;}
+
 protected:
 
     /**

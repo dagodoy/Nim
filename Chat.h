@@ -42,6 +42,41 @@ public:
     std::string opponent;
 };
 
+
+class GameMessage: public Serializable
+{
+public:
+    static const size_t MESSAGE_SIZE = sizeof(char) * 80;
+
+    GameMessage(){};
+
+    GameMessage(const std::string& n):data(n){};
+
+    void to_bin();
+
+    int from_bin(char * bobj);
+
+    std::string data;
+};
+
+
+class StartMessage: public Serializable
+{
+public:
+    static const size_t MESSAGE_SIZE = sizeof(char) * 80 * 2;
+
+    StartMessage(){};
+
+    StartMessage(const struct sockaddr& s, const socklen_t& l, bool b):sa(s),sa_len(l), turn(b){};
+
+    void to_bin();
+
+    int from_bin(char * bobj);
+
+    struct sockaddr sa;
+    socklen_t sa_len;
+    bool turn;
+};
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 
@@ -92,7 +127,7 @@ public:
      * @param n nick del usuario
      */
     NimClient(const char * s, const char * p, const char * n, const char * o):serverSocket(s, p),
-        name(n), opponent(o){};
+        name(n), opponent(o){game.reserve(GAME_SIZE);};
 
     enum Palo
     {
@@ -100,6 +135,8 @@ public:
         NORMAL = 1,
         SELECTED  = 2
     };
+
+    const int GAME_SIZE = 6;
 
     /**
      *  Envía el mensaje de login al servidor
@@ -114,6 +151,8 @@ public:
     bool procesaInput(std::string s);
 
     bool isGameOver();
+
+    void render();
 
     /**
      *  Rutina principal para el Thread de E/S. Lee datos de STDIN (std::getline)
