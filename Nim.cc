@@ -9,8 +9,6 @@ void ServerMessage::to_bin()
 
     memset(_data, 0, MESSAGE_SIZE);
 
-    //Serializar los campos type, nick y message en el buffer _data
-
     char * tmp = _data;
 
     memcpy(tmp, name.c_str(), 12 * sizeof(char));
@@ -25,8 +23,6 @@ int ServerMessage::from_bin(char * bobj)
     alloc_data(MESSAGE_SIZE);
 
     memcpy(static_cast<void *>(_data), bobj, MESSAGE_SIZE);
-
-    //Reconstruir la clase usando el buffer _data
 
     char * tmp = bobj;
 
@@ -48,8 +44,6 @@ void GameMessage::to_bin()
 
     memset(_data, 0, MESSAGE_SIZE);
 
-    //Serializar los campos type, nick y message en el buffer _data
-
     char * tmp = _data;
 
     memcpy(tmp, data.c_str(), 8 * sizeof(char));
@@ -60,8 +54,6 @@ int GameMessage::from_bin(char * bobj)
     alloc_data(MESSAGE_SIZE);
 
     memcpy(static_cast<void *>(_data), bobj, MESSAGE_SIZE);
-
-    //Reconstruir la clase usando el buffer _data
 
     char * tmp = bobj;
 
@@ -79,8 +71,6 @@ void StartMessage::to_bin()
 
     memset(_data, 0, MESSAGE_SIZE);
 
-    //Serializar los campos type, nick y message en el buffer _data
-
     char * tmp = _data;
 
     memcpy(tmp, &sa, sizeof(struct sockaddr));
@@ -94,13 +84,14 @@ void StartMessage::to_bin()
     memcpy(tmp, &turn, sizeof(bool));
 }
 
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
 int StartMessage::from_bin(char * bobj)
 {
     alloc_data(MESSAGE_SIZE);
 
     memcpy(static_cast<void *>(_data), bobj, MESSAGE_SIZE);
-
-    //Reconstruir la clase usando el buffer _data
 
     char * tmp = bobj;
 
@@ -142,11 +133,9 @@ void P2PServer::do_messages()
         auto it3 = clients.begin();
         for (auto it = names.begin(), it2 = opponents.begin(); it != names.end() && it2 != opponents.end() && it3 != clients.end(); ++it, ++it2, ++it3)
         {
-
             if (*it == obj.opponent && *it2 == obj.name)
             {
                 //Manda a cada uno un mensaje con el puerto del otro y su turno
-                //Begin message p1, p2 = ...
                 std::cout << "Oponente encontrado\n";
                 StartMessage s1, s2;
                 Socket s = **it3;
@@ -163,6 +152,7 @@ void P2PServer::do_messages()
                 socket.send(s2, *sock);
                 socket.send(s1, **it3);
 
+                //Elimina al jugador que estaba esperando del servidor
                 found = true;
                 names.erase(it);
                 opponents.erase(it2);
@@ -172,6 +162,7 @@ void P2PServer::do_messages()
         }
         
         if (!found){
+            //Añade al jugador al servidor si no encuentra a su oponente
             std::unique_ptr<Socket> sock_ptr(sock); 
             clients.push_back(std::move(sock_ptr));
             names.push_back(obj.name);
@@ -188,16 +179,21 @@ void NimClient::run()
 {
     ServerMessage em(name, opponent);
 
+    //Se conecta al servidor
     socket.send(em, socket);   
 
 
     StartMessage bgn;
+    //Espera a que el servidor le envie su rival
     socket.recv(bgn);
     myTurn = bgn.turn;
     peer = Socket(&bgn.sa, bgn.sa_len);
+
+    //Llama al primer render
     system("clear");
     render();
 
+    //Lanza los threads
     std::thread in_thread(&NimClient::input_thread, this);
 
     net_thread();
@@ -206,6 +202,7 @@ void NimClient::run()
 
 bool NimClient::isGameOver()
 {
+    //Comprueba si queda algun palo sin eliminar
     for (int i = 0; i < game.size(); i++)
     {
         if (game[i] != GONE) return false;
@@ -215,6 +212,7 @@ bool NimClient::isGameOver()
 
 void NimClient::render()
 {
+    //Dibuja el estado del juego
     std::string output;
     if (myTurn) std::cout << "Tu turno\n";
     else std::cout << "Turno del oponente\n";
@@ -301,6 +299,7 @@ void NimClient::input_thread()
 	        std::getline(std::cin, msg);
             system("clear");
 
+            //processInput devuelve false si el mensaje no es valido
             if (processInput(msg))
             {
                 GameMessage gmsg(msg);

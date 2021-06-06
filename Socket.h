@@ -116,7 +116,7 @@ public:
 
     socklen_t getSockLen(){return sa_len;}
 
-//protected:
+protected:
 
     /**
      *  Descriptor del socket
