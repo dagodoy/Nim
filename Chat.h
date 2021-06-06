@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <sstream>
+#include <thread>
 
 #include "Serializable.h"
 #include "Socket.h"
@@ -46,7 +47,7 @@ public:
 class GameMessage: public Serializable
 {
 public:
-    static const size_t MESSAGE_SIZE = sizeof(char) * 80;
+    static const size_t MESSAGE_SIZE = sizeof(char) * 8;
 
     GameMessage(){};
 
@@ -63,7 +64,7 @@ public:
 class StartMessage: public Serializable
 {
 public:
-    static const size_t MESSAGE_SIZE = sizeof(char) * 80 * 2;
+    static const size_t MESSAGE_SIZE = sizeof(struct sockaddr) + sizeof(socklen_t) + sizeof(bool);
 
     StartMessage(){};
 
@@ -126,8 +127,8 @@ public:
      * @param p puerto del servidor
      * @param n nick del usuario
      */
-    NimClient(const char * s, const char * p, const char * n, const char * o):serverSocket(s, p),
-        name(n), opponent(o){game.reserve(GAME_SIZE);};
+    NimClient(const char * s, const char * p, const char * n, const char * o):socket(s, p),
+        name(n), opponent(o){for (int i = 0; i < GAME_SIZE; i++) game.push_back(NORMAL); run();};
 
     enum Palo
     {
@@ -171,7 +172,7 @@ private:
     /**
      * Socket para comunicar con el servidor
      */
-    Socket serverSocket;
+    Socket peer;
     Socket socket;
 
     /**
