@@ -29,7 +29,7 @@
 class ServerMessage: public Serializable
 {
 public:
-    static const size_t MESSAGE_SIZE = sizeof(char) * 80 * 2;
+    static const size_t MESSAGE_SIZE = sizeof(char) * 12 * 2;
 
     ServerMessage(){};
 
@@ -130,7 +130,7 @@ public:
     NimClient(const char * s, const char * p, const char * n, const char * o):socket(s, p),
         name(n), opponent(o){for (int i = 0; i < GAME_SIZE; i++) game.push_back(NORMAL); run();};
 
-    enum Palo
+    enum Stick
     {
         GONE   = 0,
         NORMAL = 1,
@@ -138,6 +138,7 @@ public:
     };
 
     const int GAME_SIZE = 6;
+    const int MAX_MOVES = 3;
 
     /**
      *  Envía el mensaje de login al servidor
@@ -149,7 +150,7 @@ public:
      */
     void logout();
 
-    bool procesaInput(std::string s);
+    bool processInput(std::string s);
 
     bool isGameOver();
 
@@ -181,6 +182,6 @@ private:
     std::string name;
     std::string opponent;
     bool myTurn;
-    std::vector<Palo> game;
+    std::vector<Stick> game;
 };
 

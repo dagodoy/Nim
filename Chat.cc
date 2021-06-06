@@ -13,11 +13,11 @@ void ServerMessage::to_bin()
 
     char * tmp = _data;
 
-    memcpy(tmp, name.c_str(), 80 * sizeof(char));
+    memcpy(tmp, name.c_str(), 12 * sizeof(char));
 
-    tmp += 80 * sizeof(char);
+    tmp += 12 * sizeof(char);
 
-    memcpy(tmp, opponent.c_str(), 80 * sizeof(char));
+    memcpy(tmp, opponent.c_str(), 12 * sizeof(char));
 }
 
 int ServerMessage::from_bin(char * bobj)
@@ -32,7 +32,7 @@ int ServerMessage::from_bin(char * bobj)
 
     name = tmp;
 
-    tmp += 80 * sizeof(char);
+    tmp += 12 * sizeof(char);
 
     opponent = tmp;
 
@@ -135,9 +135,8 @@ void P2PServer::do_messages()
 
         ServerMessage obj;
         Socket * sock;
-        std::cout << "Esperando mensaje\n";
         socket.recv(obj, sock);
-        std::cout << "Mensaje recibido\n";
+        std::cout << "Ha entrado " << obj.name << " buscando a " << obj.opponent << std::endl;
         bool found = false;
 
         auto it3 = clients.begin();
@@ -149,25 +148,20 @@ void P2PServer::do_messages()
                 //Manda a cada uno un mensaje con el puerto del otro y su turno
                 //Begin message p1, p2 = ...
                 std::cout << "Oponente encontrado\n";
-                StartMessage s1;
-                StartMessage s2;
+                StartMessage s1, s2;
+                Socket s = **it3;
                 s1.sa = sock->getSockaddr();
                 s1.sa_len = sock->getSockLen();
-                int r = rand() % 2;
-                s1.turn = false;
-                Socket s = **it3;
+
                 s2.sa = s.getSockaddr();
                 s2.sa_len = s.getSockLen();
-                s2.turn = true;
-                //s2.turn = 1-r;
+
+                int r = rand() % 2;
+                s1.turn = r;
+                s2.turn = 1-r;
+
                 socket.send(s2, *sock);
                 socket.send(s1, **it3);
-
-                // struct sockaddr_in* addr1 = (struct sockaddr_in*) &(sock->sa);
-                // struct sockaddr_in* addr2 = (struct sockaddr_in*) &(s.sa);
-                // std::cout <<"Direccion de " << obj.name << " que se envia a " << obj.opponent << addr1->sin_addr.s_addr << " " << addr1->sin_port << std::endl;
-                // std::cout <<"Direccion de " << obj.opponent << " que se envia a " << obj.name << addr2->sin_addr.s_addr << " " << addr2->sin_port << std::endl;
-
 
                 found = true;
                 names.erase(it);
@@ -200,11 +194,8 @@ void NimClient::run()
     StartMessage bgn;
     socket.recv(bgn);
     myTurn = bgn.turn;
-    // struct sockaddr_in* addr1 = (struct sockaddr_in*) &(bgn.sa);
-    // std::cout << addr1->sin_addr.s_addr << " " << addr1->sin_port << std::endl;
     peer = Socket(&bgn.sa, bgn.sa_len);
-    //socket.bind();
-    //system("clear");
+    system("clear");
     render();
 
     std::thread in_thread(&NimClient::input_thread, this);
@@ -236,7 +227,7 @@ void NimClient::render()
     std::cout << output << std::endl;
 }
 
-bool NimClient::procesaInput(std::string s)
+bool NimClient::processInput(std::string s)
 {
     bool valid = false;
     std::stringstream str;
@@ -252,11 +243,24 @@ bool NimClient::procesaInput(std::string s)
             aux -=1;
             if (game[aux] == GONE)
                 std::cout << "Ese palo ya esta eliminado\n";
-            else 
+            else if (game[aux] == SELECTED) 
             {
+                game[aux] = NORMAL;
                 valid = true;
-                if (game[aux] == NORMAL) game[aux] = SELECTED;
-                else if (game[aux] == SELECTED) game[aux] = NORMAL;
+            }
+            else
+            {
+                int n = 0;
+                for (int i = 0; i < game.size(); i++)
+                {
+                    if (game[i] == SELECTED) n++;
+                }
+                if (n >= MAX_MOVES) std::cout << "Ya has seleccionado el numero maximo de palos \n";
+                else
+                {
+                    valid = true;
+                    if (game[aux] == NORMAL) game[aux] = SELECTED;
+                }
             }
         }
     else if (s == "Pass")
@@ -295,16 +299,16 @@ void NimClient::input_thread()
         {
             std::string msg;
 	        std::getline(std::cin, msg);
-            //system("clear");
+            system("clear");
 
-            if (procesaInput(msg))
+            if (processInput(msg))
             {
                 GameMessage gmsg(msg);
                 socket.send(gmsg, peer);
             }
-            render();
+            if (isGameOver()) return;
+            else render();
         }
-        if (isGameOver()) break;
     }
 }
 
@@ -316,19 +320,14 @@ void NimClient::net_thread()
         {
             //Recibir Mensajes de red
             GameMessage obj;
-            Socket * s;
-            std::cout << "Esperando mensaje\n";
-            socket.recv(obj, s);
+            socket.recv(obj);
 
-            struct sockaddr_in* addr1 = (struct sockaddr_in*) &(s->sa);
-            std::cout << addr1->sin_addr.s_addr << " " << addr1->sin_port << std::endl;
-
-            //system("clear");
-            std::cout << obj.data << std::endl;
-            procesaInput(obj.data);
-            render();
+            system("clear");
+            processInput(obj.data);
+            if (isGameOver()) return;
+            else render();
         }	
-        if (isGameOver()) break;
+        
     }
 }
 
